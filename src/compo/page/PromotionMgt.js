@@ -876,9 +876,9 @@ const PromotionMgt = () => {
             accept="image/*"
             onChange={
               (e) =>
-              handleImageUpload(e, (imageUrl) =>
-                setNewPromotion({ ...newPromotion, imageUrl })
-              )
+                handleImageUpload(e, (imageUrl) =>
+                  setNewPromotion({ ...newPromotion, imageUrl })
+                )
             }
             style={{ marginBottom: "12px" }}
           />
