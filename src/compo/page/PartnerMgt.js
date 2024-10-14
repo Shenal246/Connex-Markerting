@@ -21,6 +21,9 @@ import {
   Select,
   Zoom,
   Slide,
+  DialogTitle,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import PasswordIcon from '@mui/icons-material/Lock';
@@ -28,7 +31,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import Swal from 'sweetalert2';
 import APIConnection from '../../config.js';
 import axios from 'axios';
-
+import { Grid } from 'antd';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 const themeColor = {
   primary: '#444',
   primaryDark: '#666',
@@ -69,10 +73,10 @@ const PremiumButton = styled(Button)(({ theme, variant }) => ({
 }));
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '12px',
+  fontSize: "15px",
   borderBottom: `1px solid ${themeColor.borderColor}`,
-  padding: '6px 8px',
-  textAlign: 'center',
+  padding: "6px 8px",
+  textAlign: "left",
   backgroundColor: themeColor.rowAlternateColor,
   color: themeColor.color,
 }));
@@ -147,6 +151,28 @@ const DetailTableCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
+
+
+// File upload component
+const FileUploadField = ({ handleFileChange, fileName, label, name }) => (
+  <>
+    <Button
+      variant="contained"
+      component="label"
+      startIcon={<UploadFileIcon />}
+      sx={{ mt: 1, mr: 2 }}
+    >
+      Upload {label}
+      <input type="file" hidden onChange={(event) => handleFileChange(event, name)} />
+    </Button>
+    {fileName && (
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        {fileName}
+      </Typography>
+    )}
+  </>
+);
+
 const PartnerMgt = () => {
   const [data, setData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,12 +189,31 @@ const PartnerMgt = () => {
   const [currentAction, setCurrentAction] = useState('');
 
 
+  // State variables for each file
+  const [brFile, setBrFile] = useState(null);
+  const [vatFile, setVatFile] = useState(null);
+  const [form20File, setForm20File] = useState(null);
+
+  const [brFileName, setBrFileName] = useState('');
+  const [vatFileName, setVatFileName] = useState('');
+  const [form20FileName, setForm20FileName] = useState('');
+
+  // State variables to hold BR and VAT numbers
+  const [brNumber, setBrNumber] = useState('');
+  const [vatNumber, setVatNumber] = useState('');
+
+
+  //partner category 
+
+  const [partnerCategory, setPartnerCategory] = useState('');
+
   //api
   const getPartnerApplicationsapi = APIConnection.getPartnerApplicationsapi;
   const rejectPartnerApi = APIConnection.rejectPartnerApi;
   const validatePartnerApi = APIConnection.validatePartnerApi;
-  // const backendUrl = 'http://192.168.13.218:3000'; // Your backend's base URL
-  const backendUrl = APIConnection.backendUrl; // Your backend's base URL
+  const updatePartnerDataApi = APIConnection.updatePartnerRq;
+  const backendUrl = APIConnection.backendUrl;
+
 
   const sanitizeFilePath = (filePath) => {
     if (!filePath) return '';
@@ -179,7 +224,7 @@ const PartnerMgt = () => {
     try {
       const response = await axios.get(getPartnerApplicationsapi, { withCredentials: true });
       setData(response.data);
-      
+
     } catch (error) {
       console.error('Error fetching partner applications:', error);
     }
@@ -258,54 +303,67 @@ const PartnerMgt = () => {
     }
   };
 
-  const
-    handleSubmitValidate = async () => {
-      setIsProcessing(true);
-      try {
-        const response = await axios.post(validatePartnerApi, {
-          id: selectedPartner.id,
-          password,
-        },
-          { withCredentials: true }
-        );
-        if (response.status === 200) {
-          setShowPasswordPopup(false);
-          setShowDetailPopup(false);
-          Swal.fire({
-            icon: 'success',
-            title: response.data.message,
-            confirmButtonColor: themeColor.success,
-            confirmButtonText: 'OK',
-          });
-          fetchPartnerApplications();
-        }
+  const handleSubmitValidate = async () => {
 
-        if (response.status === 210) {
-          setShowPasswordPopup(false);
-          setShowDetailPopup(false);
-          Swal.fire({
-            icon: 'error',
-            title: 'Already Exists Director details',
-            text: response.message,
-            confirmButtonColor: themeColor.success,
-            confirmButtonText: 'OK',
-          });
-        }
-      } catch (error) {
-        setIsProcessing(false);
-        setPassword('');
+    if (!partnerCategory) {
+      setShowPasswordPopup(false);
+      setShowDetailPopup(false);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Partner Category Required',
+        text: 'Please select a partner category before validating.',
+        confirmButtonColor: themeColor.warning,
+        confirmButtonText: 'OK',
+      });
+      return; // Exit the function if category is not selected
+    }
+    setIsProcessing(true);
+    try {
+      const response = await axios.post(validatePartnerApi, {
+        id: selectedPartner.id,
+        password,
+       category:partnerCategory
+      },
+        { withCredentials: true }
+      );
+      if (response.status === 200) {
+        setShowPasswordPopup(false);
+        setShowDetailPopup(false);
         Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to validate the partner.',
-          confirmButtonColor: themeColor.error,
+          icon: 'success',
+          title: response.data.message,
+          confirmButtonColor: themeColor.success,
           confirmButtonText: 'OK',
         });
-      } finally {
-        setIsProcessing(false);
-        setPassword('');
+        fetchPartnerApplications();
       }
-    };
+
+      if (response.status === 210) {
+        setShowPasswordPopup(false);
+        setShowDetailPopup(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Already Exists Director details',
+          text: response.message,
+          confirmButtonColor: themeColor.success,
+          confirmButtonText: 'OK',
+        });
+      }
+    } catch (error) {
+      setIsProcessing(false);
+      setPassword('');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to validate the partner.',
+        confirmButtonColor: themeColor.error,
+        confirmButtonText: 'OK',
+      });
+    } finally {
+      setIsProcessing(false);
+      setPassword('');
+    }
+  };
 
   const handleClosePasswordPopup = () => {
     setShowPasswordPopup(false);
@@ -339,10 +397,101 @@ const PartnerMgt = () => {
       partner.directorName.toLowerCase().includes(searchQuery);
 
     const matchesStatus =
-      statusFilter === 'All' || partner?.becomeStatusName == statusFilter;
-    
+      statusFilter === 'All' || partner?.becomeStatusName === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
+
+
+
+
+  //File UPloading
+  const handleFileUpload = (event, fileType) => {
+    const file = event.target.files[0];
+    if (file) {
+      switch (fileType) {
+        case 'brFile':
+          setBrFile(file); // Update the state with the file object
+          setBrFileName(file.name); // Set a separate state for file name
+          break;
+        case 'vatFile':
+          setVatFile(file); // Update the state with the file object
+          setVatFileName(file.name); // Set a separate state for file name
+          break;
+        case 'form20File':
+          setForm20File(file); // Update the state with the file object
+          setForm20FileName(file.name); // Set a separate state for file name
+          break;
+        default:
+          break;
+      }
+    }
+  };
+
+
+  const handleUpdateClick = async () => {
+    if (!selectedPartner) return;
+
+    try {
+      // Step 1: Create FormData object
+      const formData = new FormData();
+
+      // Step 2: Conditionally append the fields to FormData if they exist or have been modified
+      formData.append('id', selectedPartner.id); // Always include the ID
+
+      if (brNumber && brNumber !== selectedPartner.brNumber) {
+        formData.append('brNumber', brNumber); // Append BR Number only if it's changed
+      }
+
+      if (vatNumber && vatNumber !== selectedPartner.vatNumber) {
+        formData.append('vatNumber', vatNumber); // Append VAT Number only if it's changed
+      }
+
+      // Step 3: Append file fields only if they exist
+      if (brFile) formData.append('brFile', brFile);
+      if (vatFile) formData.append('vatFile', vatFile);
+      if (form20File) formData.append('form20File', form20File);
+
+
+
+      // Step 4: Send the form data to the backend using axios
+      const response = await axios.put(updatePartnerDataApi, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        withCredentials: true, // Required if your server needs credentials (cookies)
+      });
+
+      // Step 5: Handle response
+      if (response.status === 200) {
+        handleCloseDetailPopup();
+        fetchPartnerApplications();
+        Swal.fire({
+          icon: 'success',
+          title: 'Updated Successfully',
+          text: response.data.message || 'The partner information was updated successfully!',
+          confirmButtonColor: '#3085d6',
+          confirmButtonText: 'OK',
+        });
+      } else {
+        throw new Error('Failed to update partner');
+      }
+    } catch (error) {
+      // Step 6: Handle error
+      console.error('Error updating partner:', error);
+      handleCloseDetailPopup();
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'There was an error updating the partner information. Please try again.',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'OK',
+      });
+    }
+  };
+
+
+
 
   return (
     <Box sx={{ padding: 2, overflowY: 'hidden' }}>
@@ -424,12 +573,13 @@ const PartnerMgt = () => {
           </TableBody>
         </Table>
       </TableContainer>
-
+      {/* Detail view */}
       <Dialog
         open={showDetailPopup}
         onClose={handleCloseDetailPopup}
         PaperProps={{
           style: {
+            overflow: 'hidden',
             width: '600px',
             borderRadius: '8px',
             boxShadow: '0px 3px 6px rgba(0,0,0,0.2)',
@@ -437,226 +587,288 @@ const PartnerMgt = () => {
         }}
         TransitionComponent={Zoom}
         TransitionProps={{ timeout: 400 }}
+
       >
+        {/* <DialogTitle> Company Information</DialogTitle> */}
         <DialogContent>
           {selectedPartner && (
             <>
-              <DetailTypography variant="h6">
+              {/* Form Filler Details Section */}
+              <Typography variant="h5" sx={{ mb: 2, color: '#1F2937' }}>
                 Form Filler Details
-              </DetailTypography>
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <DetailTableCell>Name:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.personalName}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Email:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.personalEmail}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Designation:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.designation}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Mobile No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.personalMobile}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Department:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.department}
-                    </DetailTableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              </Typography>
+              <TextField
+                label="Name"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.personalName}
+                sx={{ marginBottom: '12px', marginTop: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Email"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.personalEmail}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Designation"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.designation}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Mobile No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.personalMobile}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Department"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.department}
+                sx={{ marginBottom: '24px' }}
+                InputProps={{ readOnly: true }}
+              />
 
-              <DetailTypography variant="h6">
+              {/* Company Information Section */}
+              <Typography variant="h5" sx={{ mb: 2, color: '#1F2937' }}>
                 Company Information
-              </DetailTypography>
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <DetailTableCell>Company Name:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.companyName}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Address:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.companyAddress}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>City:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.companyCity}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Website Link:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.companyWebsite}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Email:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.companyEmail}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Mobile No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.companyMobile}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>WhatsApp No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.whatsappBusiness}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Country:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.countryName}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>BR No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.brNumber}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>VAT No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.vatNumber}
-                    </DetailTableCell>
-                  </TableRow>
+              </Typography>
+              <TextField
+                label="Company Name"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.companyName}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Address"
+                variant="outlined"
+                fullWidth
+                multiline
+                value={selectedPartner.companyAddress}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="City"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.companyCity}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Website Link"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.companyWebsite}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Email"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.companyEmail}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Mobile No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.companyMobile}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="WhatsApp No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.whatsappBusiness}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Country"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.countryName}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="BR No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.brNumber}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{
+                  readOnly: selectedPartner.brNumber !== null,
+                   // If empty, make it editable
+                }}
+                onChange={(e) => setBrNumber(e.target.value)}
+              />
 
-                  <TableRow>
-                    <DetailTableCell>Company BR PDF:</DetailTableCell>
-                    <DetailTableCell>
-                      <Button
-                        variant="outlined"
-                        onClick={() =>
-                          window.open(`${backendUrl}/${sanitizeFilePath(selectedPartner.brFile)}`, '_blank')
-                        }
-                        disabled={!selectedPartner.brFile} // Disable button if no file is available
-                      >
-                        View BR PDF
-                      </Button>
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Company VAT PDF:</DetailTableCell>
-                    <DetailTableCell>
-                      <Button
-                        variant="outlined"
-                        onClick={() =>
-                          window.open(`${backendUrl}/${sanitizeFilePath(selectedPartner.vatFile)}`, '_blank')}
-                        disabled={!selectedPartner.vatFile}
-                      >
-                        View VAT PDF
-                      </Button>
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Form 20 PDF:</DetailTableCell>
-                    <DetailTableCell>
-                      <Button
-                        variant="outlined"
-                        onClick={() =>
-                          window.open(`${backendUrl}/${sanitizeFilePath(selectedPartner.form20File)}`, '_blank')}
-                        disabled={!selectedPartner.form20File}
-                      >
-                        View Form 20 PDF
-                      </Button>
-                    </DetailTableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {/* VAT No Field */}
+              <TextField
+                label="VAT No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.vatNumber}
+                sx={{ marginBottom: '24px' }}
+                InputProps={{
+                  readOnly: selectedPartner.vatNumber !== null, // If empty, make it editable
+                }}
+                onChange={(e) => setVatNumber(e.target.value)}
+              />
 
-              <DetailTypography variant="h6">
+              {selectedPartner && (
+                <>
+                  <Typography variant="h5" sx={{ mb: 2, color: '#1F2937' }}>
+                    Documents
+                  </Typography>
+                  {/* BR File Section */}
+                  {selectedPartner.brFile ? (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      sx={{ marginBottom: '12px' }}
+                      onClick={() => window.open(`${backendUrl}/${sanitizeFilePath(selectedPartner.brFile)}`, '_blank')}
+                      disabled={!selectedPartner.brFile}
+                    >
+                      View BR PDF
+                    </Button>
+                  ) : (
+                    <FileUploadField handleFileChange={handleFileUpload} fileName={brFileName} label={<>BR Certificate <strong style={{ color: '#7a2300' }}>(Optional, PDF Only)</strong></>} name="brFile" />
+                  )}
+
+                  {/* VAT File Section */}
+                  {selectedPartner.vatFile ? (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      sx={{ marginBottom: '12px' }}
+                      onClick={() => window.open(`${backendUrl}/${sanitizeFilePath(selectedPartner.vatFile)}`, '_blank')}
+                      disabled={!selectedPartner.vatFile}
+                    >
+                      View VAT PDF
+                    </Button>
+                  ) : (
+                    <FileUploadField handleFileChange={handleFileUpload} fileName={vatFileName} label={<>VAT Certificate <strong style={{ color: '#7a2300' }}>(Optional, PDF Only)</strong></>} name="vatFile" />
+                  )}
+
+                  {/* Form 20 File Section */}
+                  {selectedPartner.form20File ? (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      sx={{ marginBottom: '24px' }}
+                      onClick={() => window.open(`${backendUrl}/${sanitizeFilePath(selectedPartner.form20File)}`, '_blank')}
+                      disabled={!selectedPartner.form20File}
+                    >
+                      View Form 20 PDF
+                    </Button>
+                  ) : (
+                    <FileUploadField handleFileChange={handleFileUpload} fileName={form20FileName} label={<>Form 20 Certificate <strong style={{ color: '#7a2300' }}>(Optional, PDF Only)</strong></>} name="form20File" />
+
+                  )}
+                </>
+              )}
+
+              {/* Director Information Section */}
+              <Typography variant="h5" sx={{ mb: 2, color: '#1F2937', marginTop: '20px' }}>
                 Director Information
-              </DetailTypography>
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <DetailTableCell>Name:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.directorName}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Email:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.directorEmail}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>Mobile No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.directorMobile}
-                    </DetailTableCell>
-                  </TableRow>
-                  <TableRow>
-                    <DetailTableCell>WhatsApp No:</DetailTableCell>
-                    <DetailTableCell>
-                      {selectedPartner.directorWhatsapp}
-                    </DetailTableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              </Typography>
+              <TextField
+                label="Name"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.directorName}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Email"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.directorEmail}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Mobile No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.directorMobile}
+                sx={{ marginBottom: '12px' }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="WhatsApp No"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.directorWhatsapp}
+                sx={{ marginBottom: '24px' }}
+                InputProps={{ readOnly: true }}
+              />
+
+
+              <Typography variant="h5" sx={{ mb: 2, color: '#1F2937' }}>
+                Referred By
+              </Typography>
+
+              <TextField
+                label="Channel Member"
+                variant="outlined"
+                fullWidth
+                value={selectedPartner.referred_by}
+                sx={{ marginBottom: '24px' }}
+                InputProps={{ readOnly: true }}
+              />
             </>
           )}
         </DialogContent>
-        <DialogActions>
-          {selectedPartner && selectedPartner.becomeStatusName === 'Pending' && (
+
+        {/* Dialog Actions */}
+        <DialogActions sx={{ justifyContent: 'flex-end', padding: '16px 24px' }}>
+          {selectedPartner && selectedPartner.becomeStatusName === 'Pending' && selectedPartner.brFile !== null && (
             <>
-              <PremiumButton
-                variant="outlined"
-                color="error"
-                onClick={handleRejectClick}
-              >
+              <Button variant="outlined" color="error" onClick={handleRejectClick} sx={{ textTransform: 'none' }}>
                 Reject
-              </PremiumButton>
-              <PremiumButton
-                variant="contained"
-                onClick={handleValidateClick}
-              >
+              </Button>
+              <Button variant="contained" color="primary" onClick={handleValidateClick} sx={{ textTransform: 'none' }}>
                 Validate
-              </PremiumButton>
+              </Button>
             </>
           )}
-          {selectedPartner && selectedPartner.status === 'Reject' && (
-            <PremiumButton
-              variant="contained"
-            // onClick={handleReconsiderClick}
-            >
+
+          <Button variant="contained" color="secondary" onClick={handleUpdateClick} sx={{ textTransform: 'none' }}>
+            Update
+          </Button>
+
+
+          {/* {selectedPartner && selectedPartner.becomeStatusName === 'Reject'  && (
+            <Button variant="contained" onClick={`handleReconsiderClick`} sx={{ textTransform: 'none' }}>
               Reconsider
-            </PremiumButton>
-          )}
-          <PremiumButton
-            variant="outlined"
-            color="error"
-            onClick={handleCloseDetailPopup}
-          >
+            </Button>
+          )} */}
+          <Button variant="outlined" color="error" onClick={handleCloseDetailPopup} sx={{ textTransform: 'none' }}>
             Cancel
-          </PremiumButton>
+          </Button>
         </DialogActions>
       </Dialog>
+
 
       {/* Password and Note Popup for Reject */}
       <Dialog
@@ -740,6 +952,21 @@ const PartnerMgt = () => {
       >
         <DialogContent>
           <DetailTypography variant="h6">Validate Partner</DetailTypography>
+
+          {/* New Dropdown Field for Partner Category */}
+          <FormControl fullWidth sx={{ marginBottom: '12px' }}>
+            <InputLabel>Partner Category</InputLabel>
+            <Select
+              value={partnerCategory}
+              onChange={(event) => setPartnerCategory(event.target.value)}
+              label="Partner Category"
+            >
+              <MenuItem value=""><em>None</em></MenuItem>
+              <MenuItem value="1">Distributor</MenuItem>
+              <MenuItem value="2">Reseller</MenuItem>
+              <MenuItem value="3">Consultant</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             autoFocus
             fullWidth
@@ -764,6 +991,8 @@ const PartnerMgt = () => {
               ),
             }}
           />
+
+
           {isProcessing && <CircularProgress />}
         </DialogContent>
         <DialogActions>

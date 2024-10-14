@@ -1,6 +1,6 @@
 
 // const BACKEND_URL ='https://systemapi.connexit.biz';
-const BACKEND_URL ='http://192.168.13.249:3001';
+const BACKEND_URL = 'http://192.168.12.246:3001';
 
 
 const config = {
@@ -22,7 +22,7 @@ const config = {
     getproductsapi: `${BACKEND_URL}/get-products`,
 
     getproductsIdapi: `${BACKEND_URL}/get-products-id`,
-    
+
     updateProducstapi: `${BACKEND_URL}/update-products`,
     getvideoinfo: `${BACKEND_URL}/get-video-info`,
     addvideoinfo: `${BACKEND_URL}/add-video-info`,
@@ -37,9 +37,11 @@ const config = {
     getpromotiontypeapi: `${BACKEND_URL}/getpromotiontypeapi`,
     addVendorapi: `${BACKEND_URL}/add-vendorapi`,
     updateVendorapi: `${BACKEND_URL}/update-vendor`,
-    marketingDashboatPrCountpi:`${BACKEND_URL}/get-marketingDashboardDetails`,
-    partnerRq:`${BACKEND_URL}/get-partnerRq`,
-getPrivileges:`${BACKEND_URL}/getStaffPrivileges`,
+    marketingDashboatPrCountpi: `${BACKEND_URL}/get-marketingDashboardDetails`,
+    partnerRq: `${BACKEND_URL}/get-partnerRq`,
+    getPrivileges: `${BACKEND_URL}/getStaffPrivileges`,
+    updatePartnerRq: `${BACKEND_URL}/updatePartnerRqData`,
+
 
     backendUrl: BACKEND_URL,  // Optional if you still need the base URL separately
 };
